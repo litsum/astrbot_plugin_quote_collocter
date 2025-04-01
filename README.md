@@ -1,9 +1,10 @@
-# helloworld
+# AstrBot 群u语录插件
+什么？群友又爆典了！当然是截图保存让他名垂千古口牙（
 
-AstrBot 插件模板
 
-A template plugin for AstrBot plugin feature
+## 使用方法
+发送“语录投稿+图片”，bot会将群u语录保存到本地（不同群聊相互隔离）
+在bot被戳一戳时，将会随机选择一张黑历史发送
 
-# 支持
-
-[帮助文档](https://astrbot.app)
+## 注意事项
+图片投稿没有限制，请自己注意审核
