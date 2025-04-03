@@ -1,6 +1,6 @@
 name: quote_collocter # 这是你的插件的唯一识别名。
-desc: 可以自行截图并投稿群友的逆天语录，用来日后鞭尸（linux下似乎会有bug） # 插件简短描述
+desc: 可以自行截图并投稿群友的逆天语录，用来日后鞭尸（已支持docker环境） # 插件简短描述
 help: 发送“语录投稿+图片”来存储群友的黑历史！bot会在被戳一戳时随机发送一张语录 # 插件的帮助信息
-version: v1.1 # 插件版本号。格式：v1.1.1 或者 v1.1
+version: v1.2 # 插件版本号
 author: 浅夏旧入梦 # 作者
 repo: https://github.com/litsum/astrbot_plugin_quote_collocter # 插件的仓库地址
