@@ -10,7 +10,7 @@ from astrbot.core.message.components import Image, Reply, At, Plain
 from astrbot.core.platform.sources.aiocqhttp.aiocqhttp_message_event import AiocqhttpMessageEvent
 from astrbot.api.all import *
 
-@register("quote_collocter", "浅夏旧入梦", "发送“语录投稿+图片”或回复图片发送“语录投稿”来存储群友的黑历史！发送“/语录”随机查看一条。bot会在被戳一戳时随机发送一张语录", "1.4")
+@register("quote_collocter", "浅夏旧入梦", "发送“语录投稿+图片”或回复图片发送“语录投稿”来存储群友的黑历史！发送“/语录”随机查看一条。bot会在被戳一戳时随机发送一张语录", "1.5")
 class Quote_Plugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
@@ -42,6 +42,8 @@ class Quote_Plugin(Star):
             os.makedirs(group_folder_path)
         
     def random_image_from_folder(self, folder_path):
+        if not os.path.exists(folder_path): # 增加判断文件夹是否存在的逻辑
+            return None
         files = os.listdir(folder_path)
         image_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.gif']
         images = [file for file in files if os.path.splitext(file)[1].lower() in image_extensions]
@@ -102,13 +104,12 @@ class Quote_Plugin(Star):
             message_obj = event.message_obj
             image_obj = None
             
-            # 尝试从当前消息中找到 Image 对象 (仅当直接发送图片时有效)
+            # 尝试从当前消息中找到 Image 对象
             for i in message_obj.message:
                 if isinstance(i, Image):
                     image_obj = i
                     break
             
-            # 只有当找到 image_obj 时才尝试从本地缓存读取
             if image_obj:
                 file_path = await image_obj.convert_to_file_path()
                 if file_path:
@@ -131,11 +132,9 @@ class Quote_Plugin(Star):
             else:
                 download_by_file_failed = 1
 
-            # 如果从图片缓存读取失败，尝试从协议端api读取
             if download_by_file_failed == 1 :
                 result = await client.api.call_action('get_image', **payloads)
                 
-                # 尝试直接获取 file 字段 (本地路径)
                 file_path = result.get('file')
                 if file_path and os.path.exists(file_path):
                     logger.info(f"尝试从协议端api返回的路径{file_path}读取图片")
@@ -155,7 +154,6 @@ class Quote_Plugin(Star):
                 else:
                     download_by_api_failed = 1
 
-            # 如果从api获取本地路径也失败，尝试从url下载
             if download_by_api_failed == 1 and download_by_file_failed == 1 :
                 url = result.get('url')
                 if url:
@@ -272,28 +270,20 @@ class Quote_Plugin(Star):
                 if reply_comp:
                     try:
                         logger.info(f"检测到引用回复，尝试获取消息ID: {reply_comp.id}")
-                        # 兼容处理 message_id，防止类型错误
                         reply_id = int(reply_comp.id) if str(reply_comp.id).isdigit() else reply_comp.id
                         reply_msg = await event.bot.api.call_action('get_msg', message_id=reply_id)
                         
                         if reply_msg and 'message' in reply_msg:
                             chain = reply_msg['message']
-                            
-                            # 情况A: 消息链是 List 对象
                             if isinstance(chain, list):
                                 for part in chain:
                                     if part.get('type') == 'image':
                                         file_id = part.get('data', {}).get('file')
-                                        logger.info(f"从引用消息列表获取到 file_id: {file_id}")
                                         break
-                                        
-                            # 情况B: 消息链是 String (包含CQ码)
                             elif isinstance(chain, str):
-                                # 匹配 [CQ:image,file=xxxx] 中的 file 字段
                                 match = re.search(r'\[CQ:image,[^\]]*file=([^,\]]+)', chain)
                                 if match:
                                     file_id = match.group(1)
-                                    logger.info(f"从引用消息字符串正则提取到 file_id: {file_id}")
 
                     except Exception as e:
                         logger.error(f"获取引用消息失败: {e}")
@@ -308,7 +298,6 @@ class Quote_Plugin(Star):
                             
             try:
                 self.create_group_folder(group_id)
-
                 # 下载并保存图片
                 try:
                     file_path = await self.download_image(event, file_id, group_id)
@@ -361,9 +350,11 @@ class Quote_Plugin(Star):
                             if os.path.exists(group_folder_path):
                                 selected_image_path = self.random_image_from_folder(group_folder_path)
                             
+                            # === 修改开始：无语录时静默 ===
                             if not selected_image_path:
-                                yield event.plain_result("⭐本群还没有群友语录哦~\n请发送“语录投稿+图片”进行添加！")
-                                return
+                                return # 直接返回，不发送任何消息
+                            # === 修改结束 ===
+                            
                             yield event.image_result(selected_image_path)
                         else:                   
                             texts = [
